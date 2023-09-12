@@ -1,5 +1,7 @@
 # Google China
 #DOMAIN-SUFFIX,translate.googleapis.com
+DOMAIN-KEYWORD,onlinelibrary.wiley.com
+DOMAIN-KEYWORD,pubs.acs.org
 DOMAIN-KEYWORD,sciencedirect
 DOMAIN-SUFFIX,265.com
 DOMAIN-SUFFIX,2mdn.net
