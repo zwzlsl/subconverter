@@ -1,5 +1,6 @@
 # Google China
 #DOMAIN-SUFFIX,translate.googleapis.com
+DOMAIN-KEYWORD,link.springer.com
 DOMAIN-KEYWORD,nature.com
 DOMAIN-KEYWORD,iopscience.iop.org
 DOMAIN-KEYWORD,onlinelibrary.wiley.com
