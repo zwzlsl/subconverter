@@ -2,12 +2,12 @@
 #include <mutex>
 #include <toml.hpp>
 
-#include "../config/binding.h"
-#include "../handler/webget.h"
-#include "../script/cron.h"
-#include "../server/webserver.h"
-#include "../utils/logger.h"
-#include "../utils/network.h"
+#include "config/binding.h"
+#include "handler/webget.h"
+#include "script/cron.h"
+#include "server/webserver.h"
+#include "utils/logger.h"
+#include "utils/network.h"
 #include "interfaces.h"
 #include "multithread.h"
 #include "settings.h"
@@ -30,7 +30,7 @@ int importItems(string_array &target, bool scope_limit)
     unsigned int itemCount = 0;
     for(std::string &x : target)
     {
-        if(x.find("!!import:") == x.npos)
+        if(x.find("!!import:") == std::string::npos)
         {
             result.emplace_back(x);
             continue;
@@ -46,7 +46,7 @@ int importItems(string_array &target, bool scope_limit)
             content = webGet(path, proxy, global.cacheConfig);
         else
             writeLog(0, "File not found or not a valid URL: " + path, LOG_LEVEL_ERROR);
-        if(!content.size())
+        if(content.empty())
             return -1;
 
         ss << content;
@@ -98,7 +98,7 @@ void importItems(std::vector<toml::value> &root, const std::string &import_key, 
                 content = webGet(path, proxy, global.cacheConfig);
             else
                 writeLog(0, "File not found or not a valid URL: " + path, LOG_LEVEL_ERROR);
-            if(content.size())
+            if(!content.empty())
             {
                 auto items = parseToml(content, path);
                 auto list = toml::find<std::vector<toml::value>>(items, import_key);
@@ -110,32 +110,28 @@ void importItems(std::vector<toml::value> &root, const std::string &import_key, 
     }
     root.swap(newRoot);
     writeLog(0, "Imported " + std::to_string(count) + " item(s).");
-    return;
 }
 
 void readRegexMatch(YAML::Node node, const std::string &delimiter, string_array &dest, bool scope_limit = true)
 {
-    YAML::Node object;
-    std::string script, url, match, rep, strLine;
-
-    for(unsigned i = 0; i < node.size(); i++)
+    for(auto && object : node)
     {
-        object = node[i];
+        std::string script, url, match, rep, strLine;
         object["script"] >>= script;
-        if(script.size())
+        if(!script.empty())
         {
             dest.emplace_back("!!script:" + script);
             continue;
         }
         object["import"] >>= url;
-        if(url.size())
+        if(!url.empty())
         {
             dest.emplace_back("!!import:" + url);
             continue;
         }
         object["match"] >>= match;
         object["replace"] >>= rep;
-        if(match.size() && rep.size())
+        if(!match.empty() && !rep.empty())
             strLine = match + delimiter + rep;
         else
             continue;
@@ -146,20 +142,17 @@ void readRegexMatch(YAML::Node node, const std::string &delimiter, string_array 
 
 void readEmoji(YAML::Node node, string_array &dest, bool scope_limit = true)
 {
-    YAML::Node object;
-    std::string script, url, match, rep, strLine;
-
-    for(unsigned i = 0; i < node.size(); i++)
+    for(auto && object : node)
     {
-        object = node[i];
+        std::string script, url, match, rep, strLine;
         object["script"] >>= script;
-        if(script.size())
+        if(!script.empty())
         {
             dest.emplace_back("!!script:" + script);
             continue;
         }
         object["import"] >>= url;
-        if(url.size())
+        if(!url.empty())
         {
             url = "!!import:" + url;
             dest.emplace_back(url);
@@ -167,7 +160,7 @@ void readEmoji(YAML::Node node, string_array &dest, bool scope_limit = true)
         }
         object["match"] >>= match;
         object["emoji"] >>= rep;
-        if(match.size() && rep.size())
+        if(!match.empty() && !rep.empty())
             strLine = match + "," + rep;
         else
             continue;
@@ -178,17 +171,12 @@ void readEmoji(YAML::Node node, string_array &dest, bool scope_limit = true)
 
 void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
 {
-    std::string strLine, name, type;
-    string_array tempArray;
-    YAML::Node object;
-    unsigned int i, j;
-
-    for(i = 0; i < node.size(); i++)
+    for(YAML::Node && object : node)
     {
-        eraseElements(tempArray);
-        object = node[i];
+        string_array tempArray;
+        std::string name, type;
         object["import"] >>= name;
-        if(name.size())
+        if(!name.empty())
         {
             dest.emplace_back("!!import:" + name);
             continue;
@@ -202,7 +190,7 @@ void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
         object["interval"] >>= interval;
         object["tolerance"] >>= tolerance;
         object["timeout"] >>= timeout;
-        for(j = 0; j < object["rule"].size(); j++)
+        for(std::size_t j = 0; j < object["rule"].size(); j++)
             tempArray.emplace_back(safe_as<std::string>(object["rule"][j]));
         switch(hash_(type))
         {
@@ -221,10 +209,7 @@ void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
             tempArray.emplace_back(interval + "," + timeout + "," + tolerance);
         }
 
-        strLine = std::accumulate(std::next(tempArray.begin()), tempArray.end(), tempArray[0], [](std::string a, std::string b) -> std::string
-        {
-            return std::move(a) + "`" + std::move(b);
-        });
+        std::string strLine = join(tempArray, "`");
         dest.emplace_back(std::move(strLine));
     }
     importItems(dest, scope_limit);
@@ -232,14 +217,11 @@ void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
 
 void readRuleset(YAML::Node node, string_array &dest, bool scope_limit = true)
 {
-    std::string strLine, name, url, group, interval;
-    YAML::Node object;
-
-    for(unsigned int i = 0; i < node.size(); i++)
+    for(auto && object : node)
     {
-        object = node[i];
+        std::string strLine, name, url, group, interval;
         object["import"] >>= name;
-        if(name.size())
+        if(!name.empty())
         {
             dest.emplace_back("!!import:" + name);
             continue;
@@ -248,13 +230,13 @@ void readRuleset(YAML::Node node, string_array &dest, bool scope_limit = true)
         object["group"] >>= group;
         object["rule"] >>= name;
         object["interval"] >>= interval;
-        if(url.size())
+        if(!url.empty())
         {
             strLine = group + "," + url;
-            if(interval.size())
+            if(!interval.empty())
                 strLine += "," + interval;
         }
-        else if(name.size())
+        else if(!name.empty())
             strLine = group + ",[]" + name;
         else
             continue;
@@ -349,12 +331,14 @@ void readYAMLConf(YAML::Node &node)
     section["quanx_rule_base"] >> global.quanXBase;
     section["loon_rule_base"] >> global.loonBase;
     section["sssub_rule_base"] >> global.SSSubBase;
+    section["singbox_rule_base"] >> global.singBoxBase;
 
     section["default_external_config"] >> global.defaultExtConfig;
     section["append_proxy_type"] >> global.appendType;
     section["proxy_config"] >> global.proxyConfig;
     section["proxy_ruleset"] >> global.proxyRuleset;
     section["proxy_subscription"] >> global.proxySubscription;
+    section["reload_conf_on_request"] >> global.reloadConfOnRequest;
 
     if(node["userinfo"].IsDefined())
     {
@@ -393,6 +377,7 @@ void readYAMLConf(YAML::Node &node)
         section["append_sub_userinfo"] >> global.appendUserinfo;
         section["clash_use_new_field_name"] >> global.clashUseNewField;
         section["clash_proxies_style"] >> global.clashProxiesStyle;
+        section["singbox_add_clash_modes"] >> global.singBoxAddClashModes;
     }
 
     if(section["rename_node"].IsSequence())
@@ -591,14 +576,14 @@ void operate_toml_kv_table(const std::vector<toml::table> &arr, const toml::key 
 {
     for(const toml::table &table : arr)
     {
-        const auto &key = table.at(key_name), value = table.at(value_name);
+        const auto &key = table.at(key_name), &value = table.at(value_name);
         binary_op(key, value);
     }
 }
 
 void readTOMLConf(toml::value &root)
 {
-    const auto &section_common = toml::find(root, "common");
+    auto section_common = toml::find(root, "common");
     string_array default_url, insert_url;
 
     find_if_exist(section_common, "default_url", default_url, "insert_url", insert_url);
@@ -623,10 +608,13 @@ void readTOMLConf(toml::value &root)
                   "quan_rule_base", global.quanBase,
                   "quanx_rule_base", global.quanXBase,
                   "loon_rule_base", global.loonBase,
+                  "sssub_rule_base", global.SSSubBase,
+                  "singbox_rule_base", global.singBoxBase,
                   "proxy_config", global.proxyConfig,
                   "proxy_ruleset", global.proxyRuleset,
                   "proxy_subscription", global.proxySubscription,
-                  "append_proxy_type", global.appendType
+                  "append_proxy_type", global.appendType,
+                  "reload_conf_on_request", global.reloadConfOnRequest
     );
 
     if(filter)
@@ -637,7 +625,7 @@ void readTOMLConf(toml::value &root)
     safe_set_streams(toml::find_or<RegexMatchConfigs>(root, "userinfo", "stream_rule", RegexMatchConfigs{}));
     safe_set_times(toml::find_or<RegexMatchConfigs>(root, "userinfo", "time_rule", RegexMatchConfigs{}));
 
-    const auto &section_node_pref = toml::find(root, "node_pref");
+    auto section_node_pref = toml::find(root, "node_pref");
 
     find_if_exist(section_node_pref,
                   "udp_flag", global.UDPFlag,
@@ -649,14 +637,15 @@ void readTOMLConf(toml::value &root)
                   "filter_deprecated_nodes", global.filterDeprecated,
                   "append_sub_userinfo", global.appendUserinfo,
                   "clash_use_new_field_name", global.clashUseNewField,
-                  "clash_proxies_style", global.clashProxiesStyle
+                  "clash_proxies_style", global.clashProxiesStyle,
+                  "singbox_add_clash_modes", global.singBoxAddClashModes
     );
 
     auto renameconfs = toml::find_or<std::vector<toml::value>>(section_node_pref, "rename_node", {});
     importItems(renameconfs, "rename_node", false);
     safe_set_renames(toml::get<RegexMatchConfigs>(toml::value(renameconfs)));
 
-    const auto &section_managed = toml::find(root, "managed_config");
+    auto section_managed = toml::find(root, "managed_config");
 
     find_if_exist(section_managed,
                   "write_managed_config", global.writeManagedConfig,
@@ -666,13 +655,13 @@ void readTOMLConf(toml::value &root)
                   "quanx_device_id", global.quanXDevID
     );
 
-    const auto &section_surge_external = toml::find(root, "surge_external_proxy");
+    auto section_surge_external = toml::find(root, "surge_external_proxy");
     find_if_exist(section_surge_external,
                   "surge_ssr_path", global.surgeSSRPath,
                   "resolve_hostname", global.surgeResolveHostname
     );
 
-    const auto &section_emojis = toml::find(root, "emojis");
+    auto section_emojis = toml::find(root, "emojis");
 
     find_if_exist(section_emojis,
                   "add_emoji", global.addEmoji,
@@ -687,7 +676,7 @@ void readTOMLConf(toml::value &root)
     importItems(groups, "custom_groups", false);
     global.customProxyGroups = toml::get<ProxyGroupConfigs>(toml::value(groups));
 
-    const auto &section_ruleset = toml::find(root, "ruleset");
+    auto section_ruleset = toml::find(root, "ruleset");
 
     find_if_exist(section_ruleset,
                   "enabled", global.enableRuleGen,
@@ -699,7 +688,7 @@ void readTOMLConf(toml::value &root)
     importItems(rulesets, "rulesets", false);
     global.customRulesets = toml::get<RulesetConfigs>(toml::value(rulesets));
 
-    const auto &section_template = toml::find(root, "template");
+    auto section_template = toml::find(root, "template");
 
     global.templatePath = toml::find_or(section_template, "template_path", "template");
 
@@ -718,8 +707,9 @@ void readTOMLConf(toml::value &root)
     auto tasks = toml::find_or<std::vector<toml::value>>(root, "tasks", {});
     importItems(tasks, "tasks", false);
     global.cronTasks = toml::get<CronTaskConfigs>(toml::value(tasks));
+    refresh_schedule();
 
-    const auto &section_server = toml::find(root, "server");
+    auto section_server = toml::find(root, "server");
 
     find_if_exist(section_server,
                   "listen", global.listenAddress,
@@ -728,7 +718,7 @@ void readTOMLConf(toml::value &root)
     );
     webServer.serve_file = !webServer.serve_file_root.empty();
 
-    const auto &section_advanced = toml::find(root, "advanced");
+    auto section_advanced = toml::find(root, "advanced");
 
     std::string log_level;
     bool enable_cache = true;
@@ -859,11 +849,14 @@ void readConf()
     ini.get_if_exist("quan_rule_base", global.quanBase);
     ini.get_if_exist("quanx_rule_base", global.quanXBase);
     ini.get_if_exist("loon_rule_base", global.loonBase);
+    ini.get_if_exist("sssub_rule_base", global.SSSubBase);
+    ini.get_if_exist("singbox_rule_base", global.singBoxBase);
     ini.get_if_exist("default_external_config", global.defaultExtConfig);
     ini.get_bool_if_exist("append_proxy_type", global.appendType);
     ini.get_if_exist("proxy_config", global.proxyConfig);
     ini.get_if_exist("proxy_ruleset", global.proxyRuleset);
     ini.get_if_exist("proxy_subscription", global.proxySubscription);
+    ini.get_bool_if_exist("reload_conf_on_request", global.reloadConfOnRequest);
 
     if(ini.section_exist("surge_external_proxy"))
     {
@@ -890,6 +883,7 @@ void readConf()
         ini.get_bool_if_exist("append_sub_userinfo", global.appendUserinfo);
         ini.get_bool_if_exist("clash_use_new_field_name", global.clashUseNewField);
         ini.get_if_exist("clash_proxies_style", global.clashProxiesStyle);
+        ini.get_bool_if_exist("singbox_add_clash_modes", global.singBoxAddClashModes);
         if(ini.item_prefix_exist("rename_node"))
         {
             ini.get_all("rename_node", tempArray);
@@ -1091,6 +1085,7 @@ int loadExternalYAML(YAML::Node &node, ExternalConfig &ext)
     section["quanx_rule_base"] >> ext.quanx_rule_base;
     section["loon_rule_base"] >> ext.loon_rule_base;
     section["sssub_rule_base"] >> ext.sssub_rule_base;
+    section["singbox_rule_base"] >> ext.singbox_rule_base;
 
     section["enable_rule_generator"] >> ext.enable_rule_generator;
     section["overwrite_original_rules"] >> ext.overwrite_original_rules;
@@ -1152,7 +1147,7 @@ int loadExternalYAML(YAML::Node &node, ExternalConfig &ext)
 
 int loadExternalTOML(toml::value &root, ExternalConfig &ext)
 {
-    const auto &section = toml::find(root, "custom");
+    auto section = toml::find(root, "custom");
 
     find_if_exist(section,
                   "enable_rule_generator", ext.enable_rule_generator,
@@ -1163,7 +1158,9 @@ int loadExternalTOML(toml::value &root, ExternalConfig &ext)
                   "mellow_rule_base", ext.mellow_rule_base,
                   "quan_rule_base", ext.quan_rule_base,
                   "quanx_rule_base", ext.quanx_rule_base,
+                  "loon_rule_base", ext.loon_rule_base,
                   "sssub_rule_base", ext.sssub_rule_base,
+                  "singbox_rule_base", ext.singbox_rule_base,
                   "add_emoji", ext.add_emoji,
                   "remove_old_emoji", ext.remove_old_emoji,
                   "include_remarks", ext.include,
@@ -1265,6 +1262,7 @@ int loadExternalConfig(std::string &path, ExternalConfig &ext)
     ini.get_if_exist("quanx_rule_base", ext.quanx_rule_base);
     ini.get_if_exist("loon_rule_base", ext.loon_rule_base);
     ini.get_if_exist("sssub_rule_base", ext.sssub_rule_base);
+    ini.get_if_exist("singbox_rule_base", ext.singbox_rule_base);
 
     ini.get_bool_if_exist("overwrite_original_rules", ext.overwrite_original_rules);
     ini.get_bool_if_exist("enable_rule_generator", ext.enable_rule_generator);
