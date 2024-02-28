@@ -1,17 +1,17 @@
 # Google China
 #DOMAIN-SUFFIX,translate.googleapis.com
-DOMAIN-SUFFIX,science.org
-DOMAIN-SUFFIX,rsc.org
-DOMAIN-SUFFIX,rsc-cdn.org
-DOMAIN-SUFFIX,zotero.org 
-DOMAIN-SUFFIX,doi.org
+DOMAIN-KEYWORD,science.org
+DOMAIN-KEYWORD,rsc.org
+DOMAIN-KEYWORD,rsc-cdn.org
+DOMAIN-KEYWORD,zotero.org 
+DOMAIN-KEYWORD,doi.org
 DOMAIN-SUFFIX,springer.com
 DOMAIN-KEYWORD,weily
 DOMAIN-KEYWORD,link.springer.com
 DOMAIN-KEYWORD,nature.com
 DOMAIN-KEYWORD,iopscience.iop.org
-DOMAIN-KEYWORD,onlinelibrary.wiley.com
-DOMAIN-KEYWORD,pubs.acs.org
+DOMAIN-KEYWORD,wiley.com
+DOMAIN-KEYWORD,acs.org
 DOMAIN-KEYWORD,sciencedirect
 DOMAIN-SUFFIX,265.com
 DOMAIN-SUFFIX,2mdn.net
